@@ -1,0 +1,131 @@
+app:
+  name: "speech-to-text"
+  version: "0.1.0"
+
+server:
+  host: "0.0.0.0"
+  port: 8000
+
+api:
+  prefix: "/api/v1"
+
+observability:
+  log_level: "INFO"
+
+  api_metrics:
+    enabled: true
+    path: "/metrics"
+
+  worker_metrics:
+    enabled: true
+    host: "0.0.0.0"
+    port: 9101
+
+database:
+  url: "${SPEECH_TO_TEXT_DATABASE_URL}"
+
+rabbitmq:
+  url: "${SPEECH_TO_TEXT_RABBITMQ_URL}"
+
+transcription:
+  upload:
+    max_file_size_mb: 500
+    max_duration_seconds: 14400
+
+    allowed_extensions:
+      - ".aac"
+      - ".flac"
+      - ".m4a"
+      - ".mp3"
+      - ".ogg"
+      - ".opus"
+      - ".wav"
+      - ".webm"
+
+    allowed_content_types:
+      - "application/octet-stream"
+      - "audio/aac"
+      - "audio/flac"
+      - "audio/mp4"
+      - "audio/mpeg"
+      - "audio/ogg"
+      - "audio/opus"
+      - "audio/wav"
+      - "audio/webm"
+      - "audio/x-flac"
+      - "audio/x-m4a"
+      - "audio/x-wav"
+      - "binary/octet-stream"
+
+  processing:
+    provider_retry:
+      max_attempts: 3
+      backoff_seconds: 2
+      max_backoff_seconds: 15
+
+storage:
+  endpoint_url: "${SPEECH_TO_TEXT_S3_ENDPOINT_URL:-}"
+  region_name: "${SPEECH_TO_TEXT_S3_REGION_NAME:-us-east-1}"
+  bucket_name: "${SPEECH_TO_TEXT_S3_BUCKET_NAME}"
+  access_key_id: "${SPEECH_TO_TEXT_S3_ACCESS_KEY_ID:-}"
+  secret_access_key: "${SPEECH_TO_TEXT_S3_SECRET_ACCESS_KEY:-}"
+  addressing_style: "auto"
+  auto_create_bucket: false
+  verify_ssl: true
+
+queue:
+  broker_url: "${SPEECH_TO_TEXT_RABBITMQ_URL}"
+  transcription_queue: "transcription"
+
+media:
+  ffprobe_path: "ffprobe"
+  ffprobe_timeout_seconds: 10
+
+asr:
+  faster_whisper:
+    model: "${SPEECH_TO_TEXT_ASR_MODEL}"
+    device: "cuda"
+    device_index: 0
+    compute_type: "float16"
+    cpu_threads: 4
+    num_workers: 1
+    language: "fa"
+    beam_size: 5
+    vad_filter: false
+    word_timestamps: false
+    condition_on_previous_text: false
+    local_files_only: false
+    download_root: "/var/lib/speech-to-text/models"
+
+  benchmark:
+    minimum_files: 400
+    minimum_duration_hours: 10
+
+    required_tags:
+      - "noise"
+      - "names"
+      - "numbers"
+      - "technical"
+      - "mixed_fa_en"
+
+    models:
+      - name: "openai/whisper-large-v3"
+        reference: "large-v3"
+
+      - name: "openai/whisper-large-v3-turbo"
+        reference: "large-v3-turbo"
+
+      - name: "nezamisafa/whisper-persian-v4"
+        reference: "models/whisper-persian-v4-ct2"
+
+llm:
+  enabled: true
+  base_url: "${SPEECH_TO_TEXT_LLM_BASE_URL}"
+  api_key: "${SPEECH_TO_TEXT_LLM_API_KEY:-}"
+  model: "${SPEECH_TO_TEXT_LLM_MODEL}"
+  timeout_seconds: 30
+  max_retries: 2
+  retry_backoff_seconds: 0.5
+  temperature: 0.0
+  max_tokens: 4096
+  max_chars_per_request: 12000

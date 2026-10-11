@@ -1,0 +1,89 @@
+services:
+  migrate:
+    build:
+      context: .
+      target: api
+    image: "speech-to-text-api:${SPEECH_TO_TEXT_IMAGE_TAG:-latest}"
+    command:
+      - "migrate"
+    environment:
+      ENV_TYPE: "production"
+      VAULT_ENV_FILE: "/run/secrets/speech-to-text.env"
+    secrets:
+      - source: speech_to_text_runtime_env
+        target: speech-to-text.env
+    networks:
+      - speech_to_text_backend
+    healthcheck:
+      disable: true
+    restart: "no"
+
+  api:
+    build:
+      context: .
+      target: api
+    image: "speech-to-text-api:${SPEECH_TO_TEXT_IMAGE_TAG:-latest}"
+    command:
+      - "api"
+    environment:
+      ENV_TYPE: "production"
+      VAULT_ENV_FILE: "/run/secrets/speech-to-text.env"
+    secrets:
+      - source: speech_to_text_runtime_env
+        target: speech-to-text.env
+    networks:
+      - speech_to_text_backend
+    ports:
+      - "${SPEECH_TO_TEXT_API_BIND_ADDRESS:-127.0.0.1}:${SPEECH_TO_TEXT_API_PORT:-8000}:8000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      target: worker
+    image: "speech-to-text-worker:${SPEECH_TO_TEXT_IMAGE_TAG:-latest}"
+    command:
+      - "worker"
+    environment:
+      ENV_TYPE: "production"
+      VAULT_ENV_FILE: "/run/secrets/speech-to-text.env"
+      NVIDIA_DRIVER_CAPABILITIES: "compute,utility"
+      CELERY_LOG_LEVEL: "${CELERY_LOG_LEVEL:-INFO}"
+      CELERY_WORKER_POOL: "${CELERY_WORKER_POOL:-solo}"
+      CELERY_WORKER_CONCURRENCY: "${CELERY_WORKER_CONCURRENCY:-1}"
+    secrets:
+      - source: speech_to_text_runtime_env
+        target: speech-to-text.env
+    networks:
+      - speech_to_text_backend
+    volumes:
+      - speech_to_text_model_cache:/var/lib/speech-to-text/models
+    expose:
+      - "9101"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities:
+                - gpu
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+networks:
+  speech_to_text_backend:
+    external: true
+    name: "${SPEECH_TO_TEXT_DOCKER_NETWORK:?SPEECH_TO_TEXT_DOCKER_NETWORK must be set to an existing backend network}"
+
+secrets:
+  speech_to_text_runtime_env:
+    file: "${SPEECH_TO_TEXT_VAULT_ENV_FILE:?SPEECH_TO_TEXT_VAULT_ENV_FILE must point to a Vault-rendered environment file}"
+
+volumes:
+  speech_to_text_model_cache:

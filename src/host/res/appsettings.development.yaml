@@ -1,0 +1,131 @@
+app:
+  name: "speech-to-text"
+  version: "0.1.0"
+
+server:
+  host: "127.0.0.1"
+  port: 8300
+
+api:
+  prefix: "/api/v1"
+
+observability:
+  log_level: "INFO"
+
+  api_metrics:
+    enabled: true
+    path: "/metrics"
+
+  worker_metrics:
+    enabled: true
+    host: "127.0.0.1"
+    port: 9101
+
+database:
+  url: "postgresql+asyncpg://speech_to_text:speech_to_text@127.0.0.1:15432/speech_to_text"
+
+rabbitmq:
+  url: "amqp://speech_to_text:speech_to_text@127.0.0.1:25673//"
+
+transcription:
+  upload:
+    max_file_size_mb: 500
+    max_duration_seconds: 14400
+
+    allowed_extensions:
+      - ".aac"
+      - ".flac"
+      - ".m4a"
+      - ".mp3"
+      - ".ogg"
+      - ".opus"
+      - ".wav"
+      - ".webm"
+
+    allowed_content_types:
+      - "application/octet-stream"
+      - "audio/aac"
+      - "audio/flac"
+      - "audio/mp4"
+      - "audio/mpeg"
+      - "audio/ogg"
+      - "audio/opus"
+      - "audio/wav"
+      - "audio/webm"
+      - "audio/x-flac"
+      - "audio/x-m4a"
+      - "audio/x-wav"
+      - "binary/octet-stream"
+
+  processing:
+    provider_retry:
+      max_attempts: 3
+      backoff_seconds: 0.5
+      max_backoff_seconds: 4
+
+storage:
+  endpoint_url: "http://localhost:19000"
+  region_name: "us-east-1"
+  bucket_name: "transcriptions"
+  access_key_id: "speech_to_text"
+  secret_access_key: "speech_to_text_secret"
+  addressing_style: "path"
+  auto_create_bucket: true
+  verify_ssl: false
+
+queue:
+  broker_url: "amqp://speech_to_text:speech_to_text@127.0.0.1:25673//"
+  transcription_queue: "transcription"
+
+media:
+  ffprobe_path: "ffprobe"
+  ffprobe_timeout_seconds: 10
+
+asr:
+  faster_whisper:
+    model: "models/whisper-persian-v4-ct2"
+    device: "cpu"
+    device_index: 0
+    compute_type: "int8"
+    cpu_threads: 4
+    num_workers: 1
+    language: "fa"
+    beam_size: 5
+    vad_filter: false
+    word_timestamps: false
+    condition_on_previous_text: false
+    local_files_only: false
+    download_root: ""
+
+  benchmark:
+    minimum_files: 400
+    minimum_duration_hours: 10
+
+    required_tags:
+      - "noise"
+      - "names"
+      - "numbers"
+      - "technical"
+      - "mixed_fa_en"
+
+    models:
+      - name: "openai/whisper-large-v3"
+        reference: "large-v3"
+
+      - name: "openai/whisper-large-v3-turbo"
+        reference: "large-v3-turbo"
+
+      - name: "nezamisafa/whisper-persian-v4"
+        reference: "models/whisper-persian-v4-ct2"
+
+llm:
+  enabled: false
+  base_url: "http://127.0.0.1:8000/v1"
+  api_key: ""
+  model: "speech-post-processing"
+  timeout_seconds: 30
+  max_retries: 2
+  retry_backoff_seconds: 0.5
+  temperature: 0.0
+  max_tokens: 4096
+  max_chars_per_request: 12000

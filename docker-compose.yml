@@ -1,0 +1,71 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: speech_to_text_postgres
+    environment:
+      POSTGRES_DB: speech_to_text
+      POSTGRES_USER: speech_to_text
+      POSTGRES_PASSWORD: speech_to_text
+    ports:
+      - "15432:5432"
+    volumes:
+      - speech_to_text_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U speech_to_text -d speech_to_text"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: speech_to_text_rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: speech_to_text
+      RABBITMQ_DEFAULT_PASS: speech_to_text
+    ports:
+      - "25673:5672"
+      - "25674:15672"
+    volumes:
+      - speech_to_text_rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  minio:
+    image: minio/minio:latest
+    container_name: speech_to_text_minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: speech_to_text
+      MINIO_ROOT_PASSWORD: speech_to_text_secret
+    ports:
+      - "19000:9000"
+      - "19001:9001"
+    volumes:
+      - speech_to_text_minio_data:/data
+    restart: unless-stopped
+
+  minio_init:
+    image: minio/mc:latest
+    container_name: speech_to_text_minio_init
+    depends_on:
+      - minio
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        until mc alias set local http://minio:9000 speech_to_text speech_to_text_secret; do
+          sleep 1
+        done
+        mc mb --ignore-existing local/transcriptions
+        exit 0
+    restart: "no"
+
+volumes:
+  speech_to_text_postgres_data:
+  speech_to_text_rabbitmq_data:
+  speech_to_text_minio_data:

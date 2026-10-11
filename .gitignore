@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+/.venv/
+venv/
+env/
+
+# Pytest
+.pytest_cache/
+.pytest_tmp/
+
+# Temporary files
+/.tmp/
+
+# Local diagnostic files
+/diagnostics/
+/.diagnose_*.py
+
+# Local ASR converted/downloaded models
+/models/
+
+# IDE
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
